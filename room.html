@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ShareSite — Кімната</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+  <div class="room" id="roomPage" style="display:none;">
+    <!-- Header -->
+    <div class="room-header">
+      <div class="room-header-left">
+        <svg class="logo-sm" viewBox="0 0 48 48" width="32" height="32">
+          <circle cx="24" cy="24" r="22" fill="#4285F4"/>
+          <path d="M16 20l8-6 8 6v12H16z" fill="#fff" opacity="0.9"/>
+          <rect x="21" y="26" width="6" height="6" rx="1" fill="#4285F4"/>
+        </svg>
+        <div>
+          <div class="room-title" id="displayRoomName">Кімната</div>
+          <div class="room-meta" id="displayRole"></div>
+        </div>
+      </div>
+      <div class="room-header-right">
+        <button class="btn btn-ghost btn-sm" id="copyCodeBtn" onclick="copyCode()" style="display:none;">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;">
+            <rect x="9" y="9" width="13" height="13" rx="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          Копіювати код
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="leaveRoom()">Вийти</button>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="room-body">
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <!-- Код -->
+        <div class="sidebar-card" id="codeCard" style="display:none;">
+          <h3>Код кімнати</h3>
+          <div class="room-code" id="displayCode">00000</div>
+        </div>
+
+        <!-- QR -->
+        <div class="sidebar-card" id="qrCard" style="display:none;">
+          <h3>QR-код</h3>
+          <div class="qr-wrapper" style="display:flex;justify-content:center;padding:8px 0;"></div>
+        </div>
+
+        <!-- Учні -->
+        <div class="sidebar-card">
+          <h3>У кімнаті (<span id="studentCount">0</span>)</h3>
+          <ul class="students-list" id="studentsList"></ul>
+        </div>
+      </div>
+
+      <!-- Main Panel -->
+      <div class="main-panel">
+        <!-- Input (teacher only) -->
+        <div class="input-panel" id="inputPanel" style="display:none;">
+          <div class="input-row">
+            <input type="text" id="linkInput" placeholder="Вставте посилання або напишіть повідомлення..." maxlength="500">
+            <button class="btn btn-primary" onclick="sendLink()">Надіслати</button>
+          </div>
+        </div>
+
+        <!-- Links -->
+        <div class="links-list" id="linksList"></div>
+
+        <!-- Empty state -->
+        <div class="no-links" id="noLinks">
+          <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+          </svg>
+          <p>Тут з'являться посилання від учителя</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Not found page -->
+  <div id="notFound" style="display:none; text-align:center; padding:80px 24px;">
+    <h2 style="margin-bottom:8px;">Кімнату не знайдено</h2>
+    <p style="color:var(--gray-500); margin-bottom:24px;">Можливо, її було видалено або код невірний</p>
+    <a href="index.html" class="btn btn-primary">На головну</a>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

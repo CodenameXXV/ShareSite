@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ShareSite — Швидке посилання</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="landing">
+    <div class="hero">
+      <div class="logo">
+        <svg viewBox="0 0 48 48" width="64" height="64">
+          <circle cx="24" cy="24" r="22" fill="#4285F4"/>
+          <path d="M16 20l8-6 8 6v12H16z" fill="#fff" opacity="0.9"/>
+          <rect x="21" y="26" width="6" height="6" rx="1" fill="#4285F4"/>
+        </svg>
+      </div>
+      <h1>ShareSite</h1>
+      <p class="subtitle">Швидко діліться посиланнями з учнями</p>
+    </div>
+
+    <div class="cards">
+      <div class="card" id="createCard">
+        <div class="card-icon blue">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+        </div>
+        <h2>Створити кімнату</h2>
+        <p>Створіть кімнату та отримайте код для учнів</p>
+        <button class="btn btn-primary" onclick="showCreateModal()">Створити</button>
+      </div>
+
+      <div class="card" id="joinCard">
+        <div class="card-icon green">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        </div>
+        <h2>Приєднатися</h2>
+        <p>Введіть 5-значний код від учителя</p>
+        <button class="btn btn-secondary" onclick="showJoinModal()">Приєднатися</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальне вікно: Створити кімнату -->
+  <div class="modal-overlay" id="createModal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModals()">&times;</button>
+      <h2>Нова кімната</h2>
+      <div class="form-group">
+        <label for="roomName">Назва кімнати</label>
+        <input type="text" id="roomName" placeholder="Наприклад: Математика 5 клас" maxlength="50" autofocus>
+      </div>
+      <div class="form-group">
+        <label for="teacherName">Ваше ім'я</label>
+        <input type="text" id="teacherName" placeholder="Іван Іванович" maxlength="40">
+      </div>
+      <button class="btn btn-primary btn-full" onclick="createRoom()">Створити кімнату</button>
+    </div>
+  </div>
+
+  <!-- Модальне вікно: Приєднатися -->
+  <div class="modal-overlay" id="joinModal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModals()">&times;</button>
+      <h2>Приєднатися до кімнати</h2>
+      <div class="form-group">
+        <label for="joinCode">Код кімнати</label>
+        <input type="text" id="joinCode" placeholder="00000" maxlength="5" inputmode="numeric" pattern="[0-9]*" class="code-input" autofocus>
+      </div>
+      <div class="form-group">
+        <label for="studentName">Ваше ім'я</label>
+        <input type="text" id="studentName" placeholder="Іван Петренко" maxlength="40">
+      </div>
+      <button class="btn btn-primary btn-full" onclick="joinRoom()">Приєднатися</button>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
