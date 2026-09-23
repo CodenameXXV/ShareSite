@@ -146,7 +146,7 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// Auto-fill from QR
+// Auto-fill from QR / auto-join from link
 document.addEventListener('DOMContentLoaded', () => {
   const codeInput = document.getElementById('joinCode');
   if (codeInput) {
@@ -154,9 +154,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
     const urlCode = params.get('code');
     const urlPass = params.get('pass');
+    if (urlCode && urlPass) {
+      codeInput.value = urlCode;
+      document.getElementById('joinPassword').value = urlPass;
+      joinRoom();
+      return;
+    }
     if (urlCode) {
       codeInput.value = urlCode;
-      if (urlPass) document.getElementById('joinPassword').value = urlPass;
       showJoinModal();
     }
   }
