@@ -24,7 +24,7 @@
     </div>
 
     <div class="cards">
-      <div class="card" id="createCard">
+      <button class="card card-btn" id="createCard" onclick="showCreateModal()">
         <div class="card-icon blue">
           <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 5v14M5 12h14"/>
@@ -32,10 +32,10 @@
         </div>
         <h2>Створити кімнату</h2>
         <p>Створіть кімнату з власним кодом та паролем</p>
-        <button class="btn btn-primary" onclick="showCreateModal()">Створити</button>
-      </div>
+        <span class="btn btn-primary">Створити</span>
+      </button>
 
-      <div class="card" id="joinCard">
+      <button class="card card-btn" id="joinCard" onclick="showJoinModal()">
         <div class="card-icon green">
           <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -46,8 +46,8 @@
         </div>
         <h2>Приєднатися</h2>
         <p>Введіть код та пароль від учителя</p>
-        <button class="btn btn-secondary" onclick="showJoinModal()">Приєднатися</button>
-      </div>
+        <span class="btn btn-secondary">Приєднатися</span>
+      </button>
     </div>
   </div>
 

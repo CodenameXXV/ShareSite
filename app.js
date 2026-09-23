@@ -352,16 +352,23 @@ function initRoom(code, role, name) {
       }
 
       const qrLink = document.getElementById('qrCopyLink');
+      const qrText = document.getElementById('qrCopyText');
+      if (qrText) {
+        qrText.textContent = qrUrl;
+        qrText.title = qrUrl;
+      }
       if (qrLink) {
         qrLink.onclick = () => {
           navigator.clipboard.writeText(qrUrl).then(() => {
-            const label = qrLink.querySelector('span');
-            label.textContent = 'Скопійовано!';
-            qrLink.classList.add('copied');
-            setTimeout(() => {
-              label.textContent = 'Скопіювати посилання';
-              qrLink.classList.remove('copied');
-            }, 2000);
+            if (qrText) {
+              const prev = qrText.textContent;
+              qrText.textContent = 'Скопійовано!';
+              qrLink.classList.add('copied');
+              setTimeout(() => {
+                qrText.textContent = prev;
+                qrLink.classList.remove('copied');
+              }, 2000);
+            }
           }).catch(() => {
             const el = document.createElement('textarea');
             el.value = qrUrl;
@@ -1096,13 +1103,23 @@ function sendWordCloud() {
     text: prompt,
     question: prompt,
     maxWords: Math.min(Math.max(maxWords, 1), 10),
-    words: {},
-    submissions: {},
     author: name,
     timestamp: Date.now()
   });
   closeRoomModals();
   showToast('Хмару слів створено');
+}
+
+function toWordArray(val) {
+  if (!val) return [];
+  if (Array.isArray(val)) return val.map(String);
+  if (typeof val === 'object') return Object.values(val).map(String);
+  if (typeof val === 'string') return [val];
+  return [];
+}
+
+function sanitizeWordKey(word) {
+  return word.replace(/[.#$\/\[\]]/g, '_');
 }
 
 function submitWordCloud(key) {
@@ -1116,7 +1133,10 @@ function submitWordCloud(key) {
   const raw = input.value.trim();
   if (!raw) { showToast('Введіть слово'); return; }
 
-  const newWords = raw.split(/[,\s]+/).map(w => w.trim()).filter(Boolean).map(w => w.toLowerCase());
+  const newWords = raw.split(/[,\s]+/)
+    .map(w => w.trim())
+    .filter(Boolean)
+    .map(w => w.toLowerCase());
   if (!newWords.length) return;
 
   const linkSnap = db.ref(`rooms/${code}/links/${key}`);
@@ -1126,7 +1146,7 @@ function submitWordCloud(key) {
 
     const studentKey = name.replace(/[.#$[\]]/g, '_');
     const maxWords = data.maxWords || 3;
-    const myWords = (data.submissions && data.submissions[studentKey]) || [];
+    const myWords = toWordArray(data.submissions && data.submissions[studentKey]);
 
     if (myWords.length >= maxWords) {
       showToast(`Максимум ${maxWords} слів`);
@@ -1135,26 +1155,34 @@ function submitWordCloud(key) {
 
     const roomLeft = maxWords - myWords.length;
     const toAdd = newWords.slice(0, roomLeft);
-    const added = {};
 
+    const wordsObj = data.words || {};
     const updates = {};
     toAdd.forEach(w => {
-      const current = (data.words && data.words[w]) || 0;
-      updates[`words/${w}`] = current + 1;
-      added[w] = true;
+      const wKey = sanitizeWordKey(w);
+      if (!wKey) return;
+      const current = Number(wordsObj[wKey]) || 0;
+      updates[`words/${wKey}`] = current + 1;
     });
-    updates[`submissions/${studentKey}`] = [...myWords, ...toAdd];
+    updates[`submissions/${studentKey}`] = myWords.concat(toAdd);
 
-    linkSnap.update(updates).then(() => {
+    return linkSnap.update(updates).then(() => {
       input.value = '';
       if (window.__wordCloudDrafts) delete window.__wordCloudDrafts[key];
-      showToast(toAdd.length < newWords.length ? `Додано ${toAdd.length} сл. із ${newWords.length}` : 'Додано!');
+      showToast(toAdd.length < newWords.length
+        ? `Додано ${toAdd.length} сл. із ${newWords.length}`
+        : 'Додано!');
     });
+  }).catch((err) => {
+    console.error('Word cloud error:', err);
+    showToast('Помилка: не вдалося додати слово');
   });
 }
 
 function buildWordCloudHtml(words) {
-  const entries = Object.entries(words || {});
+  const entries = Object.entries(words || {})
+    .map(([w, c]) => [w, Number(c) || 0])
+    .filter(([, c]) => c > 0);
   if (!entries.length) return `<div class="wordcloud-empty">Слів ще немає</div>`;
 
   const counts = entries.map(([, c]) => c);
@@ -1179,9 +1207,9 @@ function renderWordCloudCard(key, link, role, name) {
   const words = link.words || {};
   const submissions = link.submissions || {};
   const studentKey = name.replace(/[.#$[\]]/g, '_');
-  const myWords = submissions[studentKey] || [];
+  const myWords = toWordArray(submissions[studentKey]);
   const maxWords = link.maxWords || 3;
-  const totalWords = Object.values(words).reduce((a, b) => a + b, 0);
+  const totalWords = Object.values(words).reduce((a, b) => a + (Number(b) || 0), 0);
 
   let inputHtml = '';
   if (role === 'student') {

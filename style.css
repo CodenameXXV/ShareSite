@@ -85,6 +85,18 @@ body {
   border: 1px solid var(--gray-200);
 }
 
+.card-btn {
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.card-btn:active {
+  transform: translateY(-1px) scale(0.99);
+}
+
 .card:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow-lg);
@@ -453,7 +465,6 @@ body {
 .qr-copy-link {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 6px;
   margin-top: 8px;
   padding: 8px 10px;
@@ -465,7 +476,15 @@ body {
   cursor: pointer;
   user-select: none;
   transition: all 0.15s;
-  text-align: center;
+}
+
+.qr-copy-link span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: break-all;
 }
 
 .qr-copy-link:hover {
