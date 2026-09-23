@@ -1260,6 +1260,11 @@ body {
   color: var(--blue);
 }
 
+.link-icon.text-icon {
+  background: var(--gray-100);
+  color: var(--gray-700);
+}
+
 .link-content {
   flex: 1;
   min-width: 0;
