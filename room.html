@@ -59,6 +59,10 @@
         <div class="sidebar-card" id="qrCard" style="display:none;">
           <h3>QR-код</h3>
           <div class="qr-wrapper" style="display:flex;justify-content:center;padding:8px 0;"></div>
+          <div class="qr-copy-link" id="qrCopyLink" title="Натисніть, щоб скопіювати">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span>Скопіювати посилання</span>
+          </div>
         </div>
 
         <!-- Учні -->
@@ -96,6 +100,10 @@
             <button class="tool-btn" onclick="openQuestionModal()" title="Питання учням">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
               Питання
+            </button>
+            <button class="tool-btn" onclick="openWordCloudModal()" title="Хмара слів">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
+              Хмара слів
             </button>
           </div>
         </div>
@@ -202,6 +210,24 @@
         <input type="text" id="questionText" placeholder="Які наслідки мала реформа?" maxlength="300">
       </div>
       <button class="btn btn-primary btn-full" onclick="sendQuestion()">Надіслати</button>
+    </div>
+  </div>
+
+  <!-- Modal: Word Cloud -->
+  <div class="modal-overlay" id="wordCloudModal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeRoomModals()">&times;</button>
+      <h2>Хмара слів</h2>
+      <p class="modal-hint">Учні вписують слова — вони збираються в хмару на екрані.</p>
+      <div class="form-group">
+        <label for="wordCloudPrompt">Питання / тема</label>
+        <input type="text" id="wordCloudPrompt" placeholder="Три слова про Україну" maxlength="200">
+      </div>
+      <div class="form-group">
+        <label for="wordCloudMax">Макс. слів від одного учня</label>
+        <input type="number" id="wordCloudMax" value="3" min="1" max="10">
+      </div>
+      <button class="btn btn-primary btn-full" onclick="sendWordCloud()">Створити</button>
     </div>
   </div>
 

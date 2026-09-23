@@ -350,6 +350,29 @@ function initRoom(code, role, name) {
           correctLevel: QRCode.CorrectLevel.M
         });
       }
+
+      const qrLink = document.getElementById('qrCopyLink');
+      if (qrLink) {
+        qrLink.onclick = () => {
+          navigator.clipboard.writeText(qrUrl).then(() => {
+            const label = qrLink.querySelector('span');
+            label.textContent = 'Скопійовано!';
+            qrLink.classList.add('copied');
+            setTimeout(() => {
+              label.textContent = 'Скопіювати посилання';
+              qrLink.classList.remove('copied');
+            }, 2000);
+          }).catch(() => {
+            const el = document.createElement('textarea');
+            el.value = qrUrl;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            showToast('Посилання скопійовано!');
+          });
+        };
+      }
     });
 
     // Teacher leaves → delete entire room
@@ -397,7 +420,6 @@ function initRoom(code, role, name) {
 
   // Listen to links
   const openedForceLinks = getOpenedForceLinks();
-  if (role === 'student') preparePopupOnGesture();
 
   linksRef.orderByChild('timestamp').on('value', (snap) => {
     const links = snap.val() || {};
@@ -433,14 +455,18 @@ function initRoom(code, role, name) {
           </svg>
         </button>` : '';
 
+      const likesHtml = renderLikes(key, link, role, name);
+
       if (type === 'video') {
-        card.innerHTML = renderVideoCard(key, link) + deleteBtn;
+        card.innerHTML = renderVideoCard(key, link) + likesHtml + deleteBtn;
       } else if (type === 'poll') {
-        card.innerHTML = renderPollCard(key, link, role, name) + deleteBtn;
+        card.innerHTML = renderPollCard(key, link, role, name) + likesHtml + deleteBtn;
       } else if (type === 'quiz') {
-        card.innerHTML = renderQuizCard(key, link, role, name) + deleteBtn;
+        card.innerHTML = renderQuizCard(key, link, role, name) + likesHtml + deleteBtn;
       } else if (type === 'question') {
-        card.innerHTML = renderQuestionCard(key, link, role, name) + deleteBtn;
+        card.innerHTML = renderQuestionCard(key, link, role, name) + likesHtml + deleteBtn;
+      } else if (type === 'wordcloud') {
+        card.innerHTML = renderWordCloudCard(key, link, role, name) + likesHtml + deleteBtn;
       } else {
         card.innerHTML = `
           <div class="link-icon">
@@ -455,6 +481,7 @@ function initRoom(code, role, name) {
               : `<div class="link-text">${linkifyText(link.text)}</div>`}
             <div class="link-time">${formatTime(link.timestamp)} · ${escapeHtml(link.author)}${link.forceOpen ? ' · Відкрито в учнів' : ''}</div>
           </div>
+          ${likesHtml}
           ${deleteBtn}
         `;
       }
@@ -510,9 +537,44 @@ function deleteLink(key) {
   db.ref('rooms/' + code + '/links/' + key).remove();
 }
 
+// ===== LIKES =====
+function toggleLike(key) {
+  const { role, name, code } = window.__room;
+  if (role !== 'student') return;
+
+  const studentKey = name.replace(/[.#$[\]]/g, '_');
+  const likeRef = db.ref(`rooms/${code}/links/${key}/likes/${studentKey}`);
+  likeRef.once('value').then((snap) => {
+    if (snap.exists()) likeRef.remove();
+    else likeRef.set(true);
+  });
+}
+
+function renderLikes(key, link, role, name) {
+  const likes = link.likes || {};
+  const count = Object.keys(likes).length;
+  const studentKey = name.replace(/[.#$[\]]/g, '_');
+  const liked = role === 'student' && !!likes[studentKey];
+
+  if (role === 'teacher') {
+    if (count === 0) return '';
+    return `<div class="link-likes"><span class="like-count">${count} ♡</span></div>`;
+  }
+
+  return `
+    <div class="link-likes">
+      <button class="like-btn ${liked ? 'liked' : ''}" onclick="toggleLike('${key}')" title="${liked ? 'Прибрати вподобайку' : 'Подобається'}">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="${liked ? '#EA4335' : 'none'}" stroke="${liked ? '#EA4335' : 'currentColor'}" stroke-width="2">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
+        ${count > 0 ? `<span class="like-num">${count}</span>` : ''}
+      </button>
+    </div>`;
+}
+
 // ===== ROOM MODALS =====
 function closeRoomModals() {
-  document.querySelectorAll('#videoModal, #pollModal, #quizModal, #questionModal')
+  document.querySelectorAll('#videoModal, #pollModal, #quizModal, #questionModal, #wordCloudModal')
     .forEach(m => m.classList.remove('active'));
 }
 
@@ -1014,10 +1076,145 @@ function renderQuestionCard(key, link, role, name) {
     </div>`;
 }
 
-// ===== FORCE OPEN (student) =====
-let preparedPopup = null;
-let popupGestureBound = false;
+// ===== WORD CLOUD =====
+function openWordCloudModal() {
+  closeRoomModals();
+  document.getElementById('wordCloudModal').classList.add('active');
+  document.getElementById('wordCloudPrompt').value = '';
+  document.getElementById('wordCloudMax').value = '3';
+  document.getElementById('wordCloudPrompt').focus();
+}
 
+function sendWordCloud() {
+  const prompt = document.getElementById('wordCloudPrompt').value.trim();
+  const maxWords = parseInt(document.getElementById('wordCloudMax').value, 10) || 3;
+  if (!prompt) { showToast('Введіть питання або тему'); return; }
+
+  const { name, linksRef } = window.__room;
+  linksRef.push({
+    type: 'wordcloud',
+    text: prompt,
+    question: prompt,
+    maxWords: Math.min(Math.max(maxWords, 1), 10),
+    words: {},
+    submissions: {},
+    author: name,
+    timestamp: Date.now()
+  });
+  closeRoomModals();
+  showToast('Хмару слів створено');
+}
+
+function submitWordCloud(key) {
+  const { role, name, code } = window.__room;
+  if (role !== 'student') return;
+
+  const card = document.querySelector(`.link-card[data-key="${key}"]`);
+  const input = card && card.querySelector('.wordcloud-input');
+  if (!input) return;
+
+  const raw = input.value.trim();
+  if (!raw) { showToast('Введіть слово'); return; }
+
+  const newWords = raw.split(/[,\s]+/).map(w => w.trim()).filter(Boolean).map(w => w.toLowerCase());
+  if (!newWords.length) return;
+
+  const linkSnap = db.ref(`rooms/${code}/links/${key}`);
+  linkSnap.once('value').then((snap) => {
+    const data = snap.val();
+    if (!data) return;
+
+    const studentKey = name.replace(/[.#$[\]]/g, '_');
+    const maxWords = data.maxWords || 3;
+    const myWords = (data.submissions && data.submissions[studentKey]) || [];
+
+    if (myWords.length >= maxWords) {
+      showToast(`Максимум ${maxWords} слів`);
+      return;
+    }
+
+    const roomLeft = maxWords - myWords.length;
+    const toAdd = newWords.slice(0, roomLeft);
+    const added = {};
+
+    const updates = {};
+    toAdd.forEach(w => {
+      const current = (data.words && data.words[w]) || 0;
+      updates[`words/${w}`] = current + 1;
+      added[w] = true;
+    });
+    updates[`submissions/${studentKey}`] = [...myWords, ...toAdd];
+
+    linkSnap.update(updates).then(() => {
+      input.value = '';
+      if (window.__wordCloudDrafts) delete window.__wordCloudDrafts[key];
+      showToast(toAdd.length < newWords.length ? `Додано ${toAdd.length} сл. із ${newWords.length}` : 'Додано!');
+    });
+  });
+}
+
+function buildWordCloudHtml(words) {
+  const entries = Object.entries(words || {});
+  if (!entries.length) return `<div class="wordcloud-empty">Слів ще немає</div>`;
+
+  const counts = entries.map(([, c]) => c);
+  const max = Math.max(...counts);
+  const min = Math.min(...counts);
+  const range = max - min || 1;
+  const colors = ['#4285F4', '#34A853', '#EA4335', '#FBBC05', '#A142F4', '#00ACC1', '#FF7043', '#7CB342'];
+
+  // Sort by count desc so popular words come first
+  const sorted = [...entries].sort((a, b) => b[1] - a[1]);
+
+  return `<div class="wordcloud">${sorted.map(([word, count], i) => {
+    const norm = (count - min) / range;
+    const size = 14 + Math.round(norm * 28); // 14–42px
+    const color = colors[i % colors.length];
+    const weight = count > min + range * 0.5 ? 700 : (count > min ? 600 : 500);
+    return `<span class="wordcloud-word" style="font-size:${size}px;color:${color};font-weight:${weight}" title="${escapeAttr(word)}: ${count}">${escapeHtml(word)}</span>`;
+  }).join('')}</div>`;
+}
+
+function renderWordCloudCard(key, link, role, name) {
+  const words = link.words || {};
+  const submissions = link.submissions || {};
+  const studentKey = name.replace(/[.#$[\]]/g, '_');
+  const myWords = submissions[studentKey] || [];
+  const maxWords = link.maxWords || 3;
+  const totalWords = Object.values(words).reduce((a, b) => a + b, 0);
+
+  let inputHtml = '';
+  if (role === 'student') {
+    if (myWords.length >= maxWords) {
+      inputHtml = `<div class="answer-sent">Ви додали ${myWords.length}/${maxWords} слів ✓</div>`;
+    } else {
+      const draft = (window.__wordCloudDrafts && window.__wordCloudDrafts[key]) || '';
+      inputHtml = `
+        <div class="wordcloud-form">
+          <input type="text" class="wordcloud-input" placeholder="Ваше слово..." maxlength="40" value="${escapeAttr(draft)}"
+            onkeydown="if(event.key==='Enter')submitWordCloud('${key}')"
+            oninput="window.__wordCloudDrafts=window.__wordCloudDrafts||{};window.__wordCloudDrafts['${key}']=this.value">
+          <button class="btn btn-primary btn-sm" onclick="submitWordCloud('${key}')">Додати</button>
+        </div>
+        <div class="link-time" style="margin-top:6px;">Залишилось: ${maxWords - myWords.length} сл.</div>`;
+    }
+  }
+
+  return `
+    <div class="link-icon wordcloud-icon">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>
+    </div>
+    <div class="link-content">
+      <div class="link-text">${escapeHtml(link.question || link.text)}</div>
+      <div class="wordcloud-body">
+        ${buildWordCloudHtml(words)}
+        ${inputHtml}
+      </div>
+      <div class="link-time">${formatTime(link.timestamp)} · ${escapeHtml(link.author)} · ${totalWords} слів</div>
+    </div>`;
+}
+
+// ===== FORCE OPEN (student) =====
 function getOpenedForceLinks() {
   try {
     return new Set(JSON.parse(sessionStorage.getItem('openedForceLinks') || '[]'));
@@ -1031,49 +1228,12 @@ function saveOpenedForceLink(key) {
   sessionStorage.setItem('openedForceLinks', JSON.stringify(list));
 }
 
-function preparePopupOnGesture() {
-  if (popupGestureBound) return;
-  popupGestureBound = true;
-
-  const prepare = () => {
-    if (preparedPopup && !preparedPopup.closed) return;
-    preparedPopup = window.open('about:blank', '_blank');
-    document.removeEventListener('click', prepare);
-    document.removeEventListener('keydown', prepare);
-    popupGestureBound = false;
-  };
-
-  document.addEventListener('click', prepare);
-  document.addEventListener('keydown', prepare);
-}
-
 function tryAutoOpenForceLink(url, key) {
-  let opened = false;
-
-  if (preparedPopup && !preparedPopup.closed) {
-    try {
-      preparedPopup.location.href = url;
-      preparedPopup.focus();
-      opened = true;
-    } catch {
-      preparedPopup = null;
-    }
-  }
-
-  if (!opened) {
-    const w = window.open(url, '_blank');
-    if (w) {
-      opened = true;
-      try { w.focus(); } catch {}
-    }
-  }
-
-  if (opened) {
-    if (preparedPopup && preparedPopup.closed) preparedPopup = null;
-    preparePopupOnGesture();
+  const w = window.open(url, '_blank');
+  if (w) {
+    try { w.focus(); } catch {}
     return;
   }
-
   showForceOpenOverlay(url, key);
 }
 
@@ -1096,7 +1256,6 @@ function showForceOpenOverlay(url, key) {
 function dismissForceOpenOverlay() {
   const overlay = document.getElementById('forceOpenOverlay');
   if (overlay) overlay.style.display = 'none';
-  preparePopupOnGesture();
 }
 
 function copyCode() {

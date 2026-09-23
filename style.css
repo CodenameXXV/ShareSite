@@ -450,6 +450,37 @@ body {
   border-radius: var(--radius-sm);
 }
 
+.qr-copy-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: var(--gray-50);
+  border: 1px dashed var(--gray-300);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--blue);
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.qr-copy-link:hover {
+  background: #E8F0FE;
+  border-color: var(--blue);
+  border-style: solid;
+}
+
+.qr-copy-link.copied {
+  background: #E6F4EA;
+  border-color: var(--green);
+  color: var(--green-dark);
+  border-style: solid;
+}
+
 .students-list {
   list-style: none;
   max-height: 200px;
@@ -1042,6 +1073,64 @@ body {
   padding: 8px 0;
 }
 
+/* Word cloud */
+.wordcloud-icon { background: #E8F0FE; color: var(--blue); }
+
+.wordcloud-body {
+  margin-top: 10px;
+}
+
+.wordcloud {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 14px;
+  padding: 16px 12px;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  min-height: 80px;
+  line-height: 1.2;
+}
+
+.wordcloud-word {
+  transition: transform 0.2s;
+  cursor: default;
+  user-select: none;
+}
+
+.wordcloud-word:hover {
+  transform: scale(1.1);
+}
+
+.wordcloud-empty {
+  color: var(--gray-500);
+  font-size: 13px;
+  text-align: center;
+  padding: 12px;
+}
+
+.wordcloud-form {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.wordcloud-input {
+  flex: 1;
+  padding: 9px 12px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+}
+
+.wordcloud-input:focus {
+  border-color: var(--blue);
+}
+
 /* Force open overlay */
 .force-open-overlay {
   position: fixed;
@@ -1128,13 +1217,15 @@ body {
 .link-card-poll,
 .link-card-quiz,
 .link-card-question,
-.link-card-video {
+.link-card-video,
+.link-card-wordcloud {
   align-items: flex-start;
 }
 
 .link-card-poll .link-icon,
 .link-card-quiz .link-icon,
-.link-card-question .link-icon {
+.link-card-question .link-icon,
+.link-card-wordcloud .link-icon {
   margin-top: 2px;
 }
 
@@ -1198,6 +1289,56 @@ body {
 .link-delete:hover {
   background: #FDECEA;
   color: var(--red);
+}
+
+/* Likes */
+.link-likes {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  align-self: flex-end;
+  margin-left: auto;
+}
+
+.like-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 50%;
+  color: var(--gray-500);
+  transition: transform 0.15s, color 0.15s;
+  font-family: inherit;
+}
+
+.like-btn:hover {
+  color: var(--red);
+  background: #FDECEA;
+  transform: scale(1.1);
+}
+
+.like-btn.liked {
+  color: var(--red);
+}
+
+.like-btn:active {
+  transform: scale(1.25);
+}
+
+.like-num {
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 12px;
+}
+
+.like-count {
+  font-size: 13px;
+  color: var(--gray-500);
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .no-links {
