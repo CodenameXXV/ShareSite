@@ -305,7 +305,6 @@ function initRoom(code, role, name) {
   const roomRef = db.ref('rooms/' + code);
   const membersRef = db.ref('rooms/' + code + '/members');
   const linksRef = db.ref('rooms/' + code + '/links');
-
   // Display info
   roomRef.once('value', (snap) => {
     const data = snap.val();
@@ -392,7 +391,9 @@ function initRoom(code, role, name) {
   });
 
   // Listen to links
-  const openedForceLinks = new Set();
+  const openedForceLinks = getOpenedForceLinks();
+  if (role === 'student') preparePopupOnGesture();
+
   linksRef.orderByChild('timestamp').on('value', (snap) => {
     const links = snap.val() || {};
     const list = document.getElementById('linksList');
@@ -411,7 +412,8 @@ function initRoom(code, role, name) {
     entries.forEach(([key, link]) => {
       if (role === 'student' && link.forceOpen && link.url && !openedForceLinks.has(key)) {
         openedForceLinks.add(key);
-        window.open(link.url, '_blank', 'noopener');
+        saveOpenedForceLink(key);
+        tryAutoOpenForceLink(link.url, key);
       }
 
       const card = document.createElement('div');
@@ -485,6 +487,91 @@ function sendLink() {
 function deleteLink(key) {
   const code = sessionStorage.getItem('roomCode');
   db.ref('rooms/' + code + '/links/' + key).remove();
+}
+
+// ===== FORCE OPEN (student) =====
+let preparedPopup = null;
+let popupGestureBound = false;
+
+function getOpenedForceLinks() {
+  try {
+    return new Set(JSON.parse(sessionStorage.getItem('openedForceLinks') || '[]'));
+  } catch {
+    return new Set();
+  }
+}
+
+function saveOpenedForceLink(key) {
+  const list = [...getOpenedForceLinks(), key];
+  sessionStorage.setItem('openedForceLinks', JSON.stringify(list));
+}
+
+function preparePopupOnGesture() {
+  if (popupGestureBound) return;
+  popupGestureBound = true;
+
+  const prepare = () => {
+    if (preparedPopup && !preparedPopup.closed) return;
+    preparedPopup = window.open('about:blank', '_blank');
+    document.removeEventListener('click', prepare);
+    document.removeEventListener('keydown', prepare);
+    popupGestureBound = false;
+  };
+
+  document.addEventListener('click', prepare);
+  document.addEventListener('keydown', prepare);
+}
+
+function tryAutoOpenForceLink(url, key) {
+  let opened = false;
+
+  if (preparedPopup && !preparedPopup.closed) {
+    try {
+      preparedPopup.location.href = url;
+      preparedPopup.focus();
+      opened = true;
+    } catch {
+      preparedPopup = null;
+    }
+  }
+
+  if (!opened) {
+    const w = window.open(url, '_blank');
+    if (w) {
+      opened = true;
+      try { w.focus(); } catch {}
+    }
+  }
+
+  if (opened) {
+    if (preparedPopup && preparedPopup.closed) preparedPopup = null;
+    preparePopupOnGesture();
+    return;
+  }
+
+  showForceOpenOverlay(url, key);
+}
+
+function showForceOpenOverlay(url, key) {
+  const overlay = document.getElementById('forceOpenOverlay');
+  const btn = document.getElementById('forceOpenBtn');
+  const urlEl = document.getElementById('forceOpenUrl');
+  if (!overlay || !btn) return;
+
+  urlEl.textContent = url;
+  btn.href = url;
+  overlay.style.display = 'flex';
+
+  btn.onclick = (e) => {
+    saveOpenedForceLink(key);
+    dismissForceOpenOverlay();
+  };
+}
+
+function dismissForceOpenOverlay() {
+  const overlay = document.getElementById('forceOpenOverlay');
+  if (overlay) overlay.style.display = 'none';
+  preparePopupOnGesture();
 }
 
 function copyCode() {
