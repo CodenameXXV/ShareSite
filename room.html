@@ -80,6 +80,24 @@
             <input type="checkbox" id="forceOpenCheck">
             <span>Відкрити це посилання в учнів</span>
           </label>
+          <div class="teacher-toolbar">
+            <button class="tool-btn" onclick="openVideoModal()" title="Відео">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+              Відео
+            </button>
+            <button class="tool-btn" onclick="openPollModal()" title="Опитування">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+              Опитування
+            </button>
+            <button class="tool-btn" onclick="openQuizModal()" title="Тест">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              Тест
+            </button>
+            <button class="tool-btn" onclick="openQuestionModal()" title="Питання учням">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              Питання
+            </button>
+          </div>
         </div>
 
         <!-- Links -->
@@ -120,6 +138,70 @@
         <a class="btn btn-primary" id="forceOpenBtn" href="#" target="_blank" rel="noopener">Відкрити</a>
         <button class="btn btn-ghost" onclick="dismissForceOpenOverlay()">Пізніше</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal: Video -->
+  <div class="modal-overlay" id="videoModal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeRoomModals()">&times;</button>
+      <h2>Надіслати відео</h2>
+      <div class="form-group">
+        <label for="videoUrl">Посилання на YouTube або Vimeo</label>
+        <input type="text" id="videoUrl" placeholder="https://youtube.com/watch?v=..." maxlength="300">
+      </div>
+      <div class="form-group">
+        <label for="videoTitle">Заголовок (необов'язково)</label>
+        <input type="text" id="videoTitle" placeholder="Наприклад: Лекція №3" maxlength="80">
+      </div>
+      <div class="video-preview" id="videoPreview" style="display:none;"></div>
+      <button class="btn btn-primary btn-full" onclick="sendVideo()">Надіслати</button>
+    </div>
+  </div>
+
+  <!-- Modal: Poll -->
+  <div class="modal-overlay" id="pollModal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeRoomModals()">&times;</button>
+      <h2>Опитування</h2>
+      <div class="form-group">
+        <label for="pollQuestion">Питання</label>
+        <input type="text" id="pollQuestion" placeholder="Чи зрозуміло тему?" maxlength="200">
+      </div>
+      <div class="poll-options" id="pollOptions">
+        <div class="poll-option-row"><input type="text" placeholder="Варіант 1" maxlength="80" class="poll-opt"></div>
+        <div class="poll-option-row"><input type="text" placeholder="Варіант 2" maxlength="80" class="poll-opt"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost btn-sm" onclick="addPollOption()">+ Варіант</button>
+        <button class="btn btn-ghost btn-sm" onclick="fillYesNo()">Так / Ні</button>
+      </div>
+      <button class="btn btn-primary btn-full" style="margin-top:16px;" onclick="sendPoll()">Створити опитування</button>
+    </div>
+  </div>
+
+  <!-- Modal: Quiz -->
+  <div class="modal-overlay" id="quizModal">
+    <div class="modal modal-wide">
+      <button class="modal-close" onclick="closeRoomModals()">&times;</button>
+      <h2>Тест</h2>
+      <div id="quizQuestions"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addQuizQuestion()">+ Питання</button>
+      <button class="btn btn-primary btn-full" style="margin-top:16px;" onclick="sendQuiz()">Створити тест</button>
+    </div>
+  </div>
+
+  <!-- Modal: Question (private answers) -->
+  <div class="modal-overlay" id="questionModal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeRoomModals()">&times;</button>
+      <h2>Питання учням</h2>
+      <p class="modal-hint">Учні надішлють відповіді приватно — бачити будете лише ви.</p>
+      <div class="form-group">
+        <label for="questionText">Питання</label>
+        <input type="text" id="questionText" placeholder="Які наслідки мала реформа?" maxlength="300">
+      </div>
+      <button class="btn btn-primary btn-full" onclick="sendQuestion()">Надіслати</button>
     </div>
   </div>
 

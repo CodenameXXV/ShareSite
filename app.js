@@ -150,11 +150,13 @@ document.addEventListener('keydown', (e) => {
 document.addEventListener('DOMContentLoaded', () => {
   const codeInput = document.getElementById('joinCode');
   if (codeInput) {
-    // Auto-fill from URL param ?code=XXXXX
+    // Auto-fill from URL param ?code=XXXXX&pass=YYYYY
     const params = new URLSearchParams(window.location.search);
     const urlCode = params.get('code');
+    const urlPass = params.get('pass');
     if (urlCode) {
       codeInput.value = urlCode;
+      if (urlPass) document.getElementById('joinPassword').value = urlPass;
       showJoinModal();
     }
   }
@@ -305,6 +307,9 @@ function initRoom(code, role, name) {
   const roomRef = db.ref('rooms/' + code);
   const membersRef = db.ref('rooms/' + code + '/members');
   const linksRef = db.ref('rooms/' + code + '/links');
+
+  window.__room = { code, role, name, linksRef };
+
   // Display info
   roomRef.once('value', (snap) => {
     const data = snap.val();
@@ -322,30 +327,30 @@ function initRoom(code, role, name) {
     document.getElementById('copyCodeBtn').style.display = 'inline-flex';
     document.getElementById('displayCode').textContent = code;
 
-    // Show password in sidebar
+    // Show password in sidebar + generate QR code
     const passwordCard = document.getElementById('passwordCard');
-    if (passwordCard) {
-      passwordCard.style.display = 'block';
-      roomRef.once('value', (snap) => {
-        const data = snap.val();
-        document.getElementById('displayPassword').textContent = data.password || '';
-      });
-    }
+    if (passwordCard) passwordCard.style.display = 'block';
 
-    // Generate QR code
-    const qrUrl = `${window.location.origin}${window.location.pathname.replace('room.html', '')}index.html?code=${code}`;
-    const qrContainer = document.getElementById('qrCard').querySelector('.qr-wrapper');
-    qrContainer.innerHTML = '';
-    if (typeof QRCode !== 'undefined') {
-      new QRCode(qrContainer, {
-        text: qrUrl,
-        width: 180,
-        height: 180,
-        colorDark: '#202124',
-        colorLight: '#ffffff',
-        correctLevel: QRCode.CorrectLevel.M
-      });
-    }
+    roomRef.once('value', (snap) => {
+      const data = snap.val();
+      if (passwordCard) {
+        document.getElementById('displayPassword').textContent = data.password || '';
+      }
+
+      const qrUrl = `${window.location.origin}${window.location.pathname.replace('room.html', '')}index.html?code=${encodeURIComponent(code)}&pass=${encodeURIComponent(data.password || '')}`;
+      const qrContainer = document.getElementById('qrCard').querySelector('.qr-wrapper');
+      qrContainer.innerHTML = '';
+      if (typeof QRCode !== 'undefined') {
+        new QRCode(qrContainer, {
+          text: qrUrl,
+          width: 180,
+          height: 180,
+          colorDark: '#202124',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      }
+    });
 
     // Teacher leaves → delete entire room
     roomRef.onDisconnect().remove();
@@ -410,33 +415,49 @@ function initRoom(code, role, name) {
     list.innerHTML = '';
 
     entries.forEach(([key, link]) => {
-      if (role === 'student' && link.forceOpen && link.url && !openedForceLinks.has(key)) {
+      const type = link.type || 'message';
+
+      if (role === 'student' && type === 'message' && link.forceOpen && link.url && !openedForceLinks.has(key)) {
         openedForceLinks.add(key);
         saveOpenedForceLink(key);
         tryAutoOpenForceLink(link.url, key);
       }
 
       const card = document.createElement('div');
-      card.className = 'link-card';
-      card.innerHTML = `
-        <div class="link-icon">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-          </svg>
-        </div>
-        <div class="link-content">
-          ${link.url
-            ? `<div class="link-text">${link.text && link.text !== link.url ? escapeHtml(link.text) + '<br>' : ''}<a class="link-url" href="${escapeHtml(link.url)}" target="_blank" rel="noopener">${escapeHtml(link.url)}</a></div>`
-            : `<div class="link-text">${linkifyText(link.text)}</div>`}
-          <div class="link-time">${formatTime(link.timestamp)} · ${escapeHtml(link.author)}${link.forceOpen ? ' · Відкрито в учнів' : ''}</div>
-        </div>
-        ${role === 'teacher' ? `<button class="link-delete" onclick="deleteLink('${key}')" title="Видалити">
+      card.className = 'link-card' + (type !== 'message' ? ' link-card-' + type : '');
+      card.dataset.key = key;
+
+      const deleteBtn = role === 'teacher' ? `<button class="link-delete" onclick="deleteLink('${key}')" title="Видалити">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
           </svg>
-        </button>` : ''}
-      `;
+        </button>` : '';
+
+      if (type === 'video') {
+        card.innerHTML = renderVideoCard(key, link) + deleteBtn;
+      } else if (type === 'poll') {
+        card.innerHTML = renderPollCard(key, link, role, name) + deleteBtn;
+      } else if (type === 'quiz') {
+        card.innerHTML = renderQuizCard(key, link, role, name) + deleteBtn;
+      } else if (type === 'question') {
+        card.innerHTML = renderQuestionCard(key, link, role, name) + deleteBtn;
+      } else {
+        card.innerHTML = `
+          <div class="link-icon">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            </svg>
+          </div>
+          <div class="link-content">
+            ${link.url
+              ? `<div class="link-text">${link.text && link.text !== link.url ? escapeHtml(link.text) + '<br>' : ''}<a class="link-url" href="${escapeHtml(link.url)}" target="_blank" rel="noopener">${escapeHtml(link.url)}</a></div>`
+              : `<div class="link-text">${linkifyText(link.text)}</div>`}
+            <div class="link-time">${formatTime(link.timestamp)} · ${escapeHtml(link.author)}${link.forceOpen ? ' · Відкрито в учнів' : ''}</div>
+          </div>
+          ${deleteBtn}
+        `;
+      }
       list.appendChild(card);
     });
   });
@@ -487,6 +508,510 @@ function sendLink() {
 function deleteLink(key) {
   const code = sessionStorage.getItem('roomCode');
   db.ref('rooms/' + code + '/links/' + key).remove();
+}
+
+// ===== ROOM MODALS =====
+function closeRoomModals() {
+  document.querySelectorAll('#videoModal, #pollModal, #quizModal, #questionModal')
+    .forEach(m => m.classList.remove('active'));
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeRoomModals();
+});
+
+// ===== VIDEO =====
+function parseVideoUrl(raw) {
+  let url = raw.trim();
+  if (!url) return null;
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+
+  let m;
+  // YouTube
+  if ((m = url.match(/(?:youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{6,})/))) {
+    return { provider: 'youtube', id: m[1], url };
+  }
+  // Vimeo
+  if ((m = url.match(/vimeo\.com\/(\d+)/))) {
+    return { provider: 'vimeo', id: m[1], url };
+  }
+  return null;
+}
+
+function getVideoEmbed(v) {
+  if (v.provider === 'youtube') return `https://www.youtube.com/embed/${v.id}`;
+  if (v.provider === 'vimeo') return `https://player.vimeo.com/video/${v.id}`;
+  return '';
+}
+
+function getVideoThumb(v) {
+  if (v.provider === 'youtube') return `https://img.youtube.com/vi/${v.id}/hqdefault.jpg`;
+  return '';
+}
+
+function openVideoModal() {
+  closeRoomModals();
+  document.getElementById('videoModal').classList.add('active');
+  document.getElementById('videoUrl').value = '';
+  document.getElementById('videoTitle').value = '';
+  document.getElementById('videoPreview').style.display = 'none';
+  document.getElementById('videoUrl').focus();
+}
+
+document.addEventListener('input', (e) => {
+  if (e.target.id !== 'videoUrl') return;
+  const v = parseVideoUrl(e.target.value);
+  const prev = document.getElementById('videoPreview');
+  if (!v) { prev.style.display = 'none'; return; }
+  const thumb = getVideoThumb(v);
+  prev.style.display = 'block';
+  prev.innerHTML = thumb
+    ? `<img src="${thumb}" alt="preview">`
+    : `<div class="video-thumb-fallback">${v.provider === 'vimeo' ? 'Vimeo' : 'Відео'}</div>`;
+});
+
+function sendVideo() {
+  const urlVal = document.getElementById('videoUrl').value;
+  const title = document.getElementById('videoTitle').value.trim();
+  const v = parseVideoUrl(urlVal);
+  if (!v) { showToast('Вставте посилання на YouTube або Vimeo'); return; }
+
+  const { code, name, linksRef } = window.__room;
+  linksRef.push({
+    type: 'video',
+    text: title || v.url,
+    url: v.url,
+    videoProvider: v.provider,
+    videoId: v.id,
+    author: name,
+    timestamp: Date.now()
+  });
+  closeRoomModals();
+  showToast('Відео надіслано');
+}
+
+function renderVideoCard(key, link) {
+  const v = { provider: link.videoProvider, id: link.videoId };
+  const thumb = getVideoThumb(v);
+  const embed = getVideoEmbed(v);
+
+  const preview = thumb
+    ? `<div class="video-thumb" onclick="playVideo('${key}')">
+         <img src="${thumb}" alt="">
+         <div class="video-play"><div class="video-play-circle">
+           <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><polygon points="8 5 20 12 8 19 8 5"/></svg>
+         </div></div>
+       </div>`
+    : `<div class="video-thumb" onclick="playVideo('${key}')">
+         <div class="video-thumb-fallback-lg">${v.provider === 'vimeo' ? 'Vimeo' : 'YouTube'}</div>
+         <div class="video-play"><div class="video-play-circle">
+           <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><polygon points="8 5 20 12 8 19 8 5"/></svg>
+         </div></div>
+       </div>`;
+
+  return `
+    <div class="link-icon" style="background:#FDECEA;color:#EA4335;">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+    </div>
+    <div class="link-content">
+      <div class="link-text">${escapeHtml(link.text || '')}</div>
+      <div class="video-mount" id="video_${key}" data-embed="${escapeAttr(embed)}">${preview}</div>
+      <div class="link-time">${formatTime(link.timestamp)} · ${escapeHtml(link.author)}</div>
+    </div>`;
+}
+
+function playVideo(key) {
+  const mount = document.getElementById('video_' + key);
+  if (!mount) return;
+  const embed = mount.dataset.embed;
+  if (!embed) return;
+  mount.innerHTML = `<div class="video-embed"><iframe src="${embed}?autoplay=1" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div>`;
+}
+
+// ===== POLL =====
+function openPollModal() {
+  closeRoomModals();
+  document.getElementById('pollModal').classList.add('active');
+  document.getElementById('pollQuestion').value = '';
+  document.getElementById('pollOptions').innerHTML = `
+    <div class="poll-option-row"><input type="text" placeholder="Варіант 1" maxlength="80" class="poll-opt"></div>
+    <div class="poll-option-row"><input type="text" placeholder="Варіант 2" maxlength="80" class="poll-opt"></div>
+  `;
+  document.getElementById('pollQuestion').focus();
+}
+
+function addPollOption() {
+  const wrap = document.getElementById('pollOptions');
+  if (wrap.children.length >= 8) { showToast('Максимум 8 варіантів'); return; }
+  const n = wrap.children.length + 1;
+  const row = document.createElement('div');
+  row.className = 'poll-option-row';
+  row.innerHTML = `<input type="text" placeholder="Варіант ${n}" maxlength="80" class="poll-opt">
+    <button class="poll-opt-remove" onclick="this.parentElement.remove()" title="Прибрати">&times;</button>`;
+  wrap.appendChild(row);
+}
+
+function fillYesNo() {
+  document.getElementById('pollOptions').innerHTML = `
+    <div class="poll-option-row"><input type="text" value="Так" maxlength="80" class="poll-opt"></div>
+    <div class="poll-option-row"><input type="text" value="Ні" maxlength="80" class="poll-opt"></div>
+  `;
+}
+
+function sendPoll() {
+  const question = document.getElementById('pollQuestion').value.trim();
+  const opts = [...document.querySelectorAll('#pollOptions .poll-opt')]
+    .map(i => i.value.trim()).filter(Boolean);
+
+  if (!question) { showToast('Введіть питання'); return; }
+  if (opts.length < 2) { showToast('Потрібно щонайменше 2 варіанти'); return; }
+
+  const { name, linksRef } = window.__room;
+  linksRef.push({
+    type: 'poll',
+    text: question,
+    question: question,
+    options: opts,
+    votes: {},
+    author: name,
+    timestamp: Date.now()
+  });
+  closeRoomModals();
+  showToast('Опитування створено');
+}
+
+function votePoll(key, optionIndex) {
+  const { code, role, name } = window.__room;
+  if (role !== 'student') { showToast('Голосувати можуть лише учні'); return; }
+  const voterKey = name.replace(/[.#$[\]]/g, '_');
+  db.ref(`rooms/${code}/links/${key}/votes/${voterKey}`).set(optionIndex);
+}
+
+function renderPollCard(key, link, role, name) {
+  const options = link.options || [];
+  const votes = link.votes || {};
+  const voterKeys = Object.keys(votes);
+  const total = voterKeys.length;
+  const myKey = name.replace(/[.#$[\]]/g, '_');
+  const myVote = votes[myKey];
+
+  let optionsHtml = '';
+  options.forEach((opt, i) => {
+    const count = voterKeys.filter(k => votes[k] === i).length;
+    const pct = total ? Math.round((count / total) * 100) : 0;
+    const voted = myVote !== undefined;
+    const isMine = myVote === i;
+
+    if (voted || role === 'teacher') {
+      optionsHtml += `
+        <div class="poll-result ${isMine ? 'mine' : ''}">
+          <div class="poll-result-bar" style="width:${pct}%"></div>
+          <div class="poll-result-label">
+            <span>${escapeHtml(opt)}</span>
+            <span class="poll-result-pct">${count} · ${pct}%</span>
+          </div>
+        </div>`;
+    } else {
+      optionsHtml += `<button class="poll-option" onclick="votePoll('${key}', ${i})">${escapeHtml(opt)}</button>`;
+    }
+  });
+
+  const meta = role === 'teacher'
+    ? `${total} голос(ів)`
+    : (myVote !== undefined ? 'Ваш голос враховано' : 'Оберіть відповідь');
+
+  return `
+    <div class="link-icon poll-icon">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+    </div>
+    <div class="link-content">
+      <div class="link-text">${escapeHtml(link.question || link.text)}</div>
+      <div class="poll-body">${optionsHtml}</div>
+      <div class="link-time">${formatTime(link.timestamp)} · ${escapeHtml(link.author)} · ${meta}</div>
+    </div>`;
+}
+
+// ===== QUIZ =====
+let quizEditorSeq = 0;
+
+function openQuizModal() {
+  closeRoomModals();
+  document.getElementById('quizModal').classList.add('active');
+  document.getElementById('quizQuestions').innerHTML = '';
+  addQuizQuestion();
+}
+
+function addQuizQuestion() {
+  const wrap = document.getElementById('quizQuestions');
+  const n = wrap.children.length + 1;
+  const gid = 'correct_g' + (++quizEditorSeq);
+  const div = document.createElement('div');
+  div.className = 'quiz-q-editor';
+  div.innerHTML = `
+    <div class="quiz-q-head">
+      <strong>Питання ${n}</strong>
+      ${n > 1 ? `<button class="poll-opt-remove" onclick="this.closest('.quiz-q-editor').remove()" title="Видалити">&times;</button>` : ''}
+    </div>
+    <input type="text" class="quiz-q-text" placeholder="Текст питання" maxlength="300">
+    <div class="quiz-opts">
+      <div class="quiz-opt-row"><input type="radio" name="${gid}" class="quiz-correct" checked><input type="text" class="quiz-opt" placeholder="Варіант 1" maxlength="120"></div>
+      <div class="quiz-opt-row"><input type="radio" name="${gid}" class="quiz-correct"><input type="text" class="quiz-opt" placeholder="Варіант 2" maxlength="120"></div>
+      <div class="quiz-opt-row"><input type="radio" name="${gid}" class="quiz-correct"><input type="text" class="quiz-opt" placeholder="Варіант 3 (необов'язково)" maxlength="120"></div>
+      <div class="quiz-opt-row"><input type="radio" name="${gid}" class="quiz-correct"><input type="text" class="quiz-opt" placeholder="Варіант 4 (необов'язково)" maxlength="120"></div>
+    </div>
+    <div class="quiz-q-hint">Позначте правильну відповідь</div>
+  `;
+  wrap.appendChild(div);
+}
+
+function sendQuiz() {
+  const editors = document.querySelectorAll('.quiz-q-editor');
+  const questions = [];
+  let valid = true;
+
+  editors.forEach(ed => {
+    const q = ed.querySelector('.quiz-q-text').value.trim();
+    const opts = [...ed.querySelectorAll('.quiz-opt')].map(i => i.value.trim());
+    const radios = [...ed.querySelectorAll('.quiz-correct')];
+    const correctIdx = radios.findIndex(r => r.checked);
+    const filled = opts.filter(Boolean);
+    const correctVal = opts[correctIdx] || '';
+
+    if (!q || filled.length < 2 || !correctVal) { valid = false; return; }
+
+    // Remap correct index among filled options
+    const filledWithIdx = opts.map((o, i) => ({ o, i })).filter(x => x.o);
+    const remapped = filledWithIdx.findIndex(x => x.i === correctIdx);
+    questions.push({ q, options: filled, correct: remapped });
+  });
+
+  if (!valid || questions.length === 0) { showToast('Заповніть усі питання і позначте правильні відповіді'); return; }
+
+  const { name, linksRef } = window.__room;
+  linksRef.push({
+    type: 'quiz',
+    text: `Тест: ${questions.length} питань`,
+    quizQuestions: questions,
+    responses: {},
+    author: name,
+    timestamp: Date.now()
+  });
+  closeRoomModals();
+  showToast('Тест створено');
+}
+
+function submitQuiz(key) {
+  const { role, name } = window.__room;
+  if (role !== 'student') return;
+
+  const card = document.querySelector(`.link-card[data-key="${key}"]`);
+  if (!card) return;
+
+  const questions = (window.__quizCache && window.__quizCache[key]) || [];
+  const draft = (window.__quizDrafts && window.__quizDrafts[key]) || {};
+  const answers = [];
+  let allAnswered = true;
+
+  questions.forEach((q, qi) => {
+    const val = draft[qi];
+    if (val === undefined || val === null) allAnswered = false;
+    else answers.push(val);
+  });
+
+  if (!allAnswered) { showToast('Відповійте на всі питання'); return; }
+
+  const score = questions.reduce((s, q, i) => s + (answers[i] === q.correct ? 1 : 0), 0);
+  const studentKey = name.replace(/[.#$[\]]/g, '_');
+  const { code } = window.__room;
+  db.ref(`rooms/${code}/links/${key}/responses/${studentKey}`).set({
+    answers,
+    score,
+    at: Date.now()
+  });
+}
+
+document.addEventListener('change', (e) => {
+  if (e.target.matches('.quiz-answer input[type="radio"]')) {
+    const card = e.target.closest('.link-card');
+    if (!card) return;
+    const key = card.dataset.key;
+    const name = e.target.name; // q_KEY_QI
+    const m = name.match(/^q_(.+)_(\d+)$/);
+    if (!m) return;
+    const qi = parseInt(m[2], 10);
+    window.__quizDrafts = window.__quizDrafts || {};
+    window.__quizDrafts[key] = window.__quizDrafts[key] || {};
+    window.__quizDrafts[key][qi] = parseInt(e.target.value, 10);
+  }
+});
+
+function renderQuizCard(key, link, role, name) {
+  const questions = link.quizQuestions || [];
+  const responses = link.responses || {};
+  const myKey = name.replace(/[.#$[\]]/g, '_');
+  const myResp = responses[myKey];
+
+  window.__quizCache = window.__quizCache || {};
+  window.__quizCache[key] = questions;
+
+  let body = '';
+
+  if (role === 'teacher') {
+    const respList = Object.entries(responses);
+    body = `
+      <div class="quiz-teacher-results">
+        ${questions.map((q, qi) => {
+          const counts = q.options.map((_, oi) => respList.filter(([, r]) => (r.answers || [])[qi] === oi).length);
+          const max = Math.max(...counts, 1);
+          return `
+            <div class="quiz-q-result">
+              <div class="quiz-q-result-title">${qi + 1}. ${escapeHtml(q.q)}</div>
+              ${q.options.map((opt, oi) => {
+                const c = counts[oi];
+                const isCorrect = oi === q.correct;
+                return `<div class="quiz-bar ${isCorrect ? 'correct' : ''}">
+                  <div class="quiz-bar-fill" style="width:${(c / max) * 100}%"></div>
+                  <span>${escapeHtml(opt)}${isCorrect ? ' ✓' : ''} — ${c}</span>
+                </div>`;
+              }).join('')}
+            </div>`;
+        }).join('')}
+        <div class="link-time" style="margin-top:8px;">Відповіли: ${respList.length}</div>
+      </div>`;
+  } else if (myResp) {
+    const score = myResp.score || 0;
+    body = `
+      <div class="quiz-result-done">
+        <div class="quiz-score">${score} / ${questions.length}</div>
+        <div class="quiz-score-label">Ваш результат</div>
+        ${questions.map((q, qi) => {
+          const given = (myResp.answers || [])[qi];
+          const ok = given === q.correct;
+          return `<div class="quiz-review ${ok ? 'ok' : 'bad'}">
+            <div>${ok ? '✓' : '✗'} ${escapeHtml(q.q)}</div>
+            <div class="quiz-review-answer">Ваша відповідь: ${escapeHtml(q.options[given] ?? '—')} ${ok ? '' : ' · Правильно: ' + escapeHtml(q.options[q.correct])}</div>
+          </div>`;
+        }).join('')}
+      </div>`;
+  } else {
+    const draft = (window.__quizDrafts && window.__quizDrafts[key]) || {};
+    body = `
+      <div class="quiz-taker">
+        ${questions.map((q, qi) => `
+          <div class="quiz-q">
+            <div class="quiz-q-title">${qi + 1}. ${escapeHtml(q.q)}</div>
+            ${q.options.map((opt, oi) => `
+              <label class="quiz-answer">
+                <input type="radio" name="q_${key}_${qi}" value="${oi}" ${draft[qi] === oi ? 'checked' : ''}>
+                <span>${escapeHtml(opt)}</span>
+              </label>
+            `).join('')}
+          </div>
+        `).join('')}
+        <button class="btn btn-primary btn-sm" onclick="submitQuiz('${key}')">Надіслати відповіді</button>
+      </div>`;
+  }
+
+  return `
+    <div class="link-icon quiz-icon">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+    </div>
+    <div class="link-content">
+      <div class="link-text">${escapeHtml(link.text || 'Тест')}</div>
+      <div class="quiz-body">${body}</div>
+      <div class="link-time">${formatTime(link.timestamp)} · ${escapeHtml(link.author)}</div>
+    </div>`;
+}
+
+// ===== QUESTION (private answers) =====
+function openQuestionModal() {
+  closeRoomModals();
+  document.getElementById('questionModal').classList.add('active');
+  document.getElementById('questionText').value = '';
+  document.getElementById('questionText').focus();
+}
+
+function sendQuestion() {
+  const q = document.getElementById('questionText').value.trim();
+  if (!q) { showToast('Введіть питання'); return; }
+
+  const { name, linksRef } = window.__room;
+  linksRef.push({
+    type: 'question',
+    text: q,
+    question: q,
+    answers: {},
+    author: name,
+    timestamp: Date.now()
+  });
+  closeRoomModals();
+  showToast('Питання надіслано');
+}
+
+function submitAnswer(key) {
+  const { role, name, code } = window.__room;
+  if (role !== 'student') return;
+
+  const card = document.querySelector(`.link-card[data-key="${key}"]`);
+  const input = card && card.querySelector('.answer-input');
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) { showToast('Введіть відповідь'); return; }
+
+  const studentKey = name.replace(/[.#$[\]]/g, '_');
+  db.ref(`rooms/${code}/links/${key}/answers/${studentKey}`).set({
+    text,
+    at: Date.now()
+  });
+  if (window.__answerDrafts) delete window.__answerDrafts[key];
+}
+
+document.addEventListener('input', (e) => {
+  if (e.target.matches('.answer-input')) {
+    const card = e.target.closest('.link-card');
+    if (!card) return;
+    window.__answerDrafts = window.__answerDrafts || {};
+    window.__answerDrafts[card.dataset.key] = e.target.value;
+  }
+});
+
+function renderQuestionCard(key, link, role, name) {
+  const answers = link.answers || {};
+  const myKey = name.replace(/[.#$[\]]/g, '_');
+  const myAnswer = answers[myKey];
+
+  let body = '';
+
+  if (role === 'teacher') {
+    const entries = Object.entries(answers).sort((a, b) => (a[1].at || 0) - (b[1].at || 0));
+    body = entries.length
+      ? `<div class="answers-list">${entries.map(([k, a]) => `
+          <div class="answer-item">
+            <div class="answer-author">${escapeHtml(k.replace(/_/g, ' '))}</div>
+            <div class="answer-text">${escapeHtml(a.text)}</div>
+          </div>`).join('')}</div>
+        <div class="link-time">Відповідей: ${entries.length}</div>`
+      : `<div class="answers-empty">Ще немає відповідей</div>`;
+  } else if (myAnswer) {
+    body = `<div class="answer-sent">Вашу відповідь надіслано ✓</div>`;
+  } else {
+    const draft = (window.__answerDrafts && window.__answerDrafts[key]) || '';
+    body = `
+      <div class="answer-form">
+        <textarea class="answer-input" rows="2" placeholder="Ваша відповідь..." maxlength="1000">${escapeHtml(draft)}</textarea>
+        <button class="btn btn-primary btn-sm" onclick="submitAnswer('${key}')">Надіслати</button>
+      </div>`;
+  }
+
+  return `
+    <div class="link-icon question-icon">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </div>
+    <div class="link-content">
+      <div class="link-text">${escapeHtml(link.question || link.text)}</div>
+      <div class="question-body">${body}</div>
+      <div class="link-time">${formatTime(link.timestamp)} · ${escapeHtml(link.author)}${role === 'student' ? ' · Приватно' : ''}</div>
+    </div>`;
 }
 
 // ===== FORCE OPEN (student) =====
