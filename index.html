@@ -31,7 +31,7 @@
           </svg>
         </div>
         <h2>Створити кімнату</h2>
-        <p>Створіть кімнату та отримайте код для учнів</p>
+        <p>Створіть кімнату з власним кодом та паролем</p>
         <button class="btn btn-primary" onclick="showCreateModal()">Створити</button>
       </div>
 
@@ -45,7 +45,7 @@
           </svg>
         </div>
         <h2>Приєднатися</h2>
-        <p>Введіть 5-значний код від учителя</p>
+        <p>Введіть код та пароль від учителя</p>
         <button class="btn btn-secondary" onclick="showJoinModal()">Приєднатися</button>
       </div>
     </div>
@@ -56,13 +56,18 @@
     <div class="modal">
       <button class="modal-close" onclick="closeModals()">&times;</button>
       <h2>Нова кімната</h2>
-      <div class="form-group">
-        <label for="roomName">Назва кімнати</label>
-        <input type="text" id="roomName" placeholder="Наприклад: Математика 5 клас" maxlength="50" autofocus>
+      <div id="savedTeacherRoomsSection" style="display:none; margin-bottom:16px;">
+        <label style="display:block;font-size:13px;font-weight:500;color:var(--gray-700);margin-bottom:8px;">Збережені кімнати</label>
+        <div id="savedTeacherRoomsList" class="saved-rooms-list"></div>
+        <div style="text-align:center;color:var(--gray-500);font-size:12px;margin:8px 0;">або створіть нову</div>
       </div>
       <div class="form-group">
-        <label for="teacherName">Ваше ім'я</label>
-        <input type="text" id="teacherName" placeholder="Іван Іванович" maxlength="40">
+        <label for="roomCode">Код кімнати (цифри/букви)</label>
+        <input type="text" id="roomCode" placeholder="Наприклад: math5" maxlength="20" autofocus>
+      </div>
+      <div class="form-group">
+        <label for="roomPassword">Пароль кімнати</label>
+        <input type="text" id="roomPassword" placeholder="Цифри або букви" maxlength="30">
       </div>
       <button class="btn btn-primary btn-full" onclick="createRoom()">Створити кімнату</button>
     </div>
@@ -73,13 +78,18 @@
     <div class="modal">
       <button class="modal-close" onclick="closeModals()">&times;</button>
       <h2>Приєднатися до кімнати</h2>
-      <div class="form-group">
-        <label for="joinCode">Код кімнати</label>
-        <input type="text" id="joinCode" placeholder="00000" maxlength="5" inputmode="numeric" pattern="[0-9]*" class="code-input" autofocus>
+      <div id="savedRoomsSection" style="display:none; margin-bottom:16px;">
+        <label style="display:block;font-size:13px;font-weight:500;color:var(--gray-700);margin-bottom:8px;">Збережені кімнати</label>
+        <div id="savedRoomsList" class="saved-rooms-list"></div>
+        <div style="text-align:center;color:var(--gray-500);font-size:12px;margin:8px 0;">або введіть вручну</div>
       </div>
       <div class="form-group">
-        <label for="studentName">Ваше ім'я</label>
-        <input type="text" id="studentName" placeholder="Іван Петренко" maxlength="40">
+        <label for="joinCode">Код кімнати</label>
+        <input type="text" id="joinCode" placeholder="Код від учителя" maxlength="20" class="code-input" autofocus>
+      </div>
+      <div class="form-group">
+        <label for="joinPassword">Пароль</label>
+        <input type="text" id="joinPassword" placeholder="Пароль від учителя" maxlength="30">
       </div>
       <button class="btn btn-primary btn-full" onclick="joinRoom()">Приєднатися</button>
     </div>

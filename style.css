@@ -274,11 +274,75 @@ body {
 }
 
 .code-input {
-  font-size: 28px !important;
+  font-size: 22px !important;
   text-align: center;
-  letter-spacing: 12px;
+  letter-spacing: 4px;
   font-weight: 600;
-  padding: 14px !important;
+  padding: 12px !important;
+}
+
+/* ===== SAVED ROOMS ===== */
+.saved-rooms-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.saved-room-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.saved-room-item:hover {
+  background: #E8F0FE;
+  border-color: var(--blue);
+}
+
+.saved-room-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.saved-room-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray-900);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.saved-room-code {
+  font-size: 12px;
+  color: var(--gray-500);
+  margin-top: 2px;
+}
+
+.saved-room-delete {
+  background: none;
+  border: none;
+  color: var(--gray-500);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.saved-room-delete:hover {
+  background: #FDECEA;
+  color: var(--red);
 }
 
 /* ===== ROOM PAGE ===== */
@@ -461,6 +525,24 @@ body {
 .input-row input:focus {
   border-color: var(--blue);
   box-shadow: 0 0 0 3px rgba(66,133,244,0.1);
+}
+
+.force-open-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--gray-700);
+  cursor: pointer;
+  user-select: none;
+}
+
+.force-open-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--blue);
+  cursor: pointer;
 }
 
 /* Список посилань */

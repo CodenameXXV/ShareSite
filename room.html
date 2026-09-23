@@ -46,7 +46,13 @@
         <!-- Код -->
         <div class="sidebar-card" id="codeCard" style="display:none;">
           <h3>Код кімнати</h3>
-          <div class="room-code" id="displayCode">00000</div>
+          <div class="room-code" id="displayCode">—</div>
+        </div>
+
+        <!-- Пароль -->
+        <div class="sidebar-card" id="passwordCard" style="display:none;">
+          <h3>Пароль</h3>
+          <div class="room-code" id="displayPassword" style="font-size:24px;letter-spacing:4px;">—</div>
         </div>
 
         <!-- QR -->
@@ -70,6 +76,10 @@
             <input type="text" id="linkInput" placeholder="Вставте посилання або напишіть повідомлення..." maxlength="500">
             <button class="btn btn-primary" onclick="sendLink()">Надіслати</button>
           </div>
+          <label class="force-open-option">
+            <input type="checkbox" id="forceOpenCheck">
+            <span>Відкрити це посилання в учнів</span>
+          </label>
         </div>
 
         <!-- Links -->
